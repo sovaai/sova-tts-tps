@@ -114,16 +114,19 @@ def punctuation_cleaners(text):
     return text
 
 
-def light_punctuation_cleaners(text):
-    text = apply_regexp(_punctuation_garbage, text, lambda elem: "")
-    text = text.replace(" - ", " — ")
+def invalid_charset_cleaner(text, charset_re):
+    return charset_re.sub("", text)
 
+
+def light_punctuation_cleaners(text):
+    text = text.strip()
+    text = text.replace(" - ", " — ")
+    text = collapse_whitespace(text)
     return text
 
 
 def basic_cleaners(text):
     '''Basic pipeline that lowercases and collapses whitespace without transliteration.'''
-    text = light_punctuation_cleaners(text)
     text = lowercase(text)
     text = collapse_whitespace(text)
     return text

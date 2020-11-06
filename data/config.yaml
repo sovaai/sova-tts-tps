@@ -1,0 +1,23 @@
+handler:
+  charset:
+  modules: []
+  out_max_length: 200
+
+emphasizer:
+  type: # Union[nn_based, rule_based]
+  prefer_user: true
+
+  dict_source: # [path/to/dict, file_format] -> ["data/user.dict", "plane"]
+
+  model: # path/to/model
+  device: # Union[cpu, cuda] - where the calculations will be performed
+  max_unit_length:
+
+phonetizer:
+  type: # Union[nn_based, rule_based]
+
+  dict_source: # [path/to/dict, file_format] -> ["data/user.dict", "plane"]
+
+  model: # path/to/model
+  device: # Union[cpu, cuda] - where the calculations will be performed
+  max_unit_length:

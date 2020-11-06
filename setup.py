@@ -2,14 +2,14 @@ from setuptools import setup, find_packages
 
 
 libname = "TPS"
-version = "0.4.0"
+version = "1.0.0"
 
 setup(
 	name=libname,
 	version=version,
 	author="Virtual Assistants",
 	install_requires=[
-		"unidecode", "inflect"
+		"unidecode", "inflect", "nltk"
 	],
 	packages=find_packages(),
 	include_package_data=True,

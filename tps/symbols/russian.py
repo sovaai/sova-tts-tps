@@ -1,8 +1,8 @@
-LETTERS_RU = list("абвгдеёжзийклмнопрстуфхцчшщъыьэюя")
+GRAPHEMES_RU = list("абвгдеёжзийклмнопрстуфхцчшщъыьэюя")
 
 softletters = set("яёюиье")
 startsyl = set("ъьаяоёуюэеиы-")
-others = {"-", "ь", "ъ", "#"}
+others = {"ь", "ъ", "#"}
 
 hard_cons = {
     "б": "b",
@@ -50,6 +50,8 @@ stressed_vowels = [i + "1" for i in vowels.values()]
 
 o_unstressed = "ay"
 
-LETTERS_RU_TRANS = sorted(set(list(hard_cons.values()) + soft_cons + list(other_cons.values()) +
-                                    list(vowels.values()) + [o_unstressed]))
+PHONEMES_RU_TRANS = sorted(set(list(hard_cons.values()) + soft_cons + list(other_cons.values()) +
+                              list(vowels.values()) + [o_unstressed]))
 
+RU_SET = GRAPHEMES_RU
+RU_TRANS_SET = PHONEMES_RU_TRANS
