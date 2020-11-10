@@ -66,6 +66,7 @@ class Phonetizer(Processor):
         if not stress_exists: # we won't phonetize words without stress, that's all
             return token
 
-        token = self.entries.get(token, token) # word -> W_O_R_D
+        phoneme_token = self.entries.get(token, None)  # word -> W_O_R_D
+        token = shields[0] + phoneme_token + shields[1] if phoneme_token is not None else token  # W_O_R_D -> {W_O_R_D}
 
-        return shields[0] + token + shields[1] # W_O_R_D -> {W_O_R_D}
+        return token
