@@ -2,7 +2,7 @@ import re
 from typing import Union, Callable, Iterator
 
 import tps.symbols as smb
-from tps.utils.cleaners import invalid_charset_cleaner
+from tps.utils.cleaners import invalid_charset_cleaner, collapse_whitespace
 from tps.utils import load_dict
 import tps.modules as md
 import tps.types as types
@@ -10,10 +10,10 @@ import tps.types as types
 
 _curly = re.compile("({}.+?{})".format(*smb.shields))
 _invalid_symbols_dict = {
-    types.Charset.en: smb.symbols_en,
-    types.Charset.en_cmu: smb.symbols_en_cmu,
-    types.Charset.ru: smb.symbols_ru,
-    types.Charset.ru_trans: smb.symbols_ru,
+    types.Charset.en: smb.symbols_en + smb.shields + [smb.separator],
+    types.Charset.en_cmu: smb.symbols_en_cmu + smb.shields + [smb.separator],
+    types.Charset.ru: smb.symbols_ru + smb.shields + [smb.separator],
+    types.Charset.ru_trans: smb.symbols_ + smb.GRAPHEMES_RU + smb.PHONEMES_RU_TRANS + smb.shields + [smb.separator],
 }
 
 
@@ -54,7 +54,6 @@ class Handler(md.Processor):
 
         text = cleaner(text) if cleaner is not None else text
         text = text.lower()
-        text = invalid_charset_cleaner(text, self._invalid_charset)
 
         sentences = self.split_to_sentences(text, keep_delimiters)
         self._out_data = {sentence: [] for sentence in sentences}
@@ -87,6 +86,9 @@ class Handler(md.Processor):
         for module in self.modules:
             string = module.apply_to_sentence(string, **kwargs)
             self._out_data[origin_string].append(string)
+
+        string = invalid_charset_cleaner(string, self._invalid_charset)
+        string = collapse_whitespace(string)  # need to clean multiple white spaces that have appeared
 
         return string
 
