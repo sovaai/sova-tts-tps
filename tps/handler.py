@@ -134,24 +134,17 @@ class Handler(md.Processor):
     def vec2text(self, vector: list) -> str:
         text = []
         word = []
-        stress = False
+        prev = None
         for elem_idx in vector:
             elem = self.id_to_symbol[elem_idx]
-            if elem == smb.accent:
-                stress = True
-            elif elem in smb.PHONEMES or elem == smb.hyphen:
-                if stress:
-                    word.append(smb.accent)
-                    stress = False
+            if elem in smb.PHONEMES or (elem in [smb.hyphen, smb.accent] and prev in smb.PHONEMES):
                 word.append(elem)
             else:
                 if word:
                     text.append(smb.shields[0] + smb.separator.join(word) + smb.shields[1])
-                if stress:
-                    text.append(smb.accent)
-                    stress = False
                 text.append(elem)
                 word = []
+            prev = elem
 
         if word:
             text.append(smb.shields[0] + smb.separator.join(word) + smb.shields[1])
