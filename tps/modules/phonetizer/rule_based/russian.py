@@ -16,9 +16,6 @@ class RUglyPhonetizer(Phonetizer):
 
 
     def _apply_to_token(self, token, mask):
-        if token in punctuation + space:
-            return token
-
         ugly_token = convert(token)
 
         if len(ugly_token) == 1 and ugly_token not in self._symbols:

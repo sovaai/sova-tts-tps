@@ -52,6 +52,8 @@ class Phonetizer(Processor):
         tokens = self.split_to_tokens(string)
 
         for idx, token in enumerate(tokens):
+            if token in punctuation + space:
+                continue
             token = self._apply_to_token(token, mask)
             tokens[idx] = token
 
@@ -59,14 +61,14 @@ class Phonetizer(Processor):
 
 
     def _apply_to_token(self, token, mask):
-        if prob2bool(mask) or token in punctuation + space:
+        if prob2bool(mask):
             return token
 
         stress_exists = token.find(accent) != -1
         if not stress_exists: # we won't phonetize words without stress, that's all
             return token
 
-        phoneme_token = self.entries.get(token, None)  # word -> W_O_R_D
+        phoneme_token = self.entries.get(token, None)  # word -> W_O_R_D (if exists)
         token = shields[0] + phoneme_token + shields[1] if phoneme_token is not None else token  # W_O_R_D -> {W_O_R_D}
 
         return token
