@@ -9,9 +9,8 @@ from tps.types import Charset
 
 class RUglyPhonetizer(Phonetizer):
     def __init__(self, dict_source: Union[str, tuple, list, dict]=None):
-        super().__init__(dict_source)
+        super().__init__(Charset.ru_trans, dict_source)
 
-        self.charset = Charset.ru_trans
         self._symbols = symbols_dict[self.charset]
 
 

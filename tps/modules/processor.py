@@ -1,11 +1,11 @@
 import re
 from collections import OrderedDict
-from typing import Union
+from typing import Union, Pattern
 
 from nltk import sent_tokenize, word_tokenize
 
-from tps.utils import split_to_tokens
-from tps.types import Delimiter
+from tps.utils import split_to_tokens, NOT_PUNCT_DICT
+from tps.types import Delimiter, Charset
 from tps.symbols import separator, shields
 
 
@@ -23,8 +23,15 @@ _spaced_punctuation = re.compile(r" [{}]".format("".join([char for char in char_
 
 
 class Processor:
-    def __init__(self, max_unit_length: int=None):
+    def __init__(self, charset: Union[Charset, str], max_unit_length: int=None):
+        self.charset = Charset[charset]
         self.max_unit_length = max_unit_length
+
+        self._punct_re = re.compile(
+            "[^{}]".format(
+                "".join(sorted(NOT_PUNCT_DICT[self.charset]))
+            )
+        )
 
 
     def __call__(self, text: Union[str, list], **kwargs) -> Union[str, list]:
@@ -59,13 +66,12 @@ class Processor:
         return " ".join(parts)
 
 
-    @staticmethod
-    def _calc_weight(text):
+    def _calc_weight(self, text):
         _text = text
         for symb in shields:
             _text = _text.replace(symb, "")
 
-        _text = Processor.split_to_tokens(_text)
+        _text = Processor.split_to_tokens(_text, self._punct_re)
 
         weight = sum(len(s.split(separator)) if separator in s else len(s) for s in _text)
 
@@ -134,8 +140,8 @@ class Processor:
 
 
     @staticmethod
-    def split_to_tokens(text: str) -> list:
-        return split_to_tokens(text)
+    def split_to_tokens(text: str, punct_re: Pattern=None) -> list:
+        return split_to_tokens(text, punct_re)
 
 
     @staticmethod

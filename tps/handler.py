@@ -19,8 +19,7 @@ _invalid_symbols_dict = {
 
 class Handler(md.Processor):
     def __init__(self, charset: str, modules: list, out_max_length: int=None):
-        super().__init__()
-        self.charset = types.Charset[charset]
+        super().__init__(charset)
         self.symbols = smb.symbols_dict[charset]
 
         # Mappings from symbol to numeric ID and vice versa:
@@ -219,6 +218,7 @@ _modules_dict = {
         types.BasedOn.rule: {
             types.Charset.ru: {
                 "module": md.Emphasizer,
+                "args": ("charset", ),
                 "optional": ("dict_source", "prefer_user")
             },
             types.Charset.ru_trans: types.Charset.ru

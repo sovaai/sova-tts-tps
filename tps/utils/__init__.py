@@ -5,14 +5,22 @@ import yaml
 import numpy as np
 
 from tps.types import Charset
-from tps import symbols
+from tps import symbols as smb
 
 
 GRAPHEME_DICT = {
-    Charset.en: symbols.english.GRAPHEMES_EN,
-    Charset.en_cmu: symbols.english.GRAPHEMES_EN,
-    Charset.ru: symbols.russian.GRAPHEMES_RU,
-    Charset.ru_trans: symbols.russian.GRAPHEMES_RU
+    Charset.en: smb.english.GRAPHEMES_EN,
+    Charset.en_cmu: smb.english.GRAPHEMES_EN,
+    Charset.ru: smb.russian.GRAPHEMES_RU,
+    Charset.ru_trans: smb.russian.GRAPHEMES_RU
+}
+
+NOT_PUNCT_DICT = {
+    Charset.en: smb.english.GRAPHEMES_EN + smb.shields + [smb.accent, smb.separator, "\%s" %smb.hyphen],
+    Charset.en_cmu: smb.english.EN_CMU_SET + smb.shields + [smb.accent, smb.separator, "\%s" %smb.hyphen],
+    Charset.ru: smb.russian.GRAPHEMES_RU + smb.shields + [smb.accent, smb.separator, "\%s" %smb.hyphen],
+    Charset.ru_trans: smb.russian.GRAPHEMES_RU + smb.russian.PHONEMES_RU_TRANS + smb.shields +
+                      [smb.accent, smb.separator, "\%s" %smb.hyphen]
 }
 
 
@@ -20,10 +28,11 @@ def prob2bool(prob):
     return prob if isinstance(prob, bool) else np.random.choice([True, False], p=[prob, 1 - prob])
 
 
-def split_to_tokens(text):
-    prepared = ""
-    for s in text:
-        prepared += "*" + s + "*" if s in symbols.punctuation + symbols.space else s
+_punct_re = re.compile("[{}]".format("".join(smb.punctuation + smb.space)))
+def split_to_tokens(text, punct_re=None):
+    punct_re = _punct_re if punct_re is None else punct_re
+
+    prepared = punct_re.sub(lambda elem: "*{}*".format(elem.group(0)), text)
 
     prepared = prepared.split("*")
     prepared = [t for t in prepared if t != ""]

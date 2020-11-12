@@ -2,7 +2,8 @@ from typing import Union
 
 from tps.modules.processor import Processor
 from tps.utils import load_dict, prob2bool
-from tps.symbols import punctuation, space, accent, shields, separator
+from tps.symbols import punctuation, space, accent, shields
+from tps.types import Charset
 
 """
 If you need to extend the Phonetizer functionality with
@@ -10,7 +11,7 @@ language-specific rules, just add a new descendant class.
 """
 
 class Phonetizer(Processor):
-    def __init__(self, dict_source: Union[str, tuple, list, dict]=None):
+    def __init__(self, charset: Union[Charset, str], dict_source: Union[str, tuple, list, dict]=None):
         """
         Base phonetizer with common functionality for all languages.
 
@@ -25,7 +26,7 @@ class Phonetizer(Processor):
                     format - format of the dictionary file (see tps.utils.load_dict function)
                 * dict - just a dict
         """
-        super().__init__()
+        super().__init__(charset)
 
         fmt = None
         if isinstance(dict_source, (tuple, list)):
@@ -49,7 +50,7 @@ class Phonetizer(Processor):
         """
         mask = kwargs.get("mask_phonemes", False)
 
-        tokens = self.split_to_tokens(string)
+        tokens = self.split_to_tokens(string, self._punct_re)
 
         for idx, token in enumerate(tokens):
             if token in punctuation + space:
