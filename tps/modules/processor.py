@@ -45,7 +45,7 @@ class Processor:
     def apply_to_text(self, text: Union[str, list], **kwargs) -> Union[str, list]:
         if isinstance(text, list):
             processed = [
-                self.apply_to_sentence(part, **kwargs) if part not in Delimiter else part for part in text
+                self.apply_to_sentence(part, **kwargs) if not isinstance(part, Delimiter) else part for part in text
             ]
         elif isinstance(text, str):
             processed = self.apply_to_sentence(text, **kwargs)
@@ -108,7 +108,7 @@ class Processor:
 
         parts_grouped = []
         for part in _parts_grouped:
-            if part in Delimiter or self._calc_weight(part) <= max_unit_length:
+            if isinstance(part, Delimiter) or self._calc_weight(part) <= max_unit_length:
                 parts_grouped.append(part)
             else:
                 parts_grouped.extend(self.split_to_units(part, max_unit_length, keep_delimiter))

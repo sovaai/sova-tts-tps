@@ -58,7 +58,7 @@ class Handler(md.Processor):
         self._out_data = {sentence: [] for sentence in sentences}
 
         for sentence in sentences:
-            if sentence not in types.Delimiter:
+            if not isinstance(sentence, types.Delimiter):
                 sentence = self.apply_to_sentence(sentence, **kwargs)
 
                 if self.out_max_length is not None:
@@ -68,8 +68,10 @@ class Handler(md.Processor):
                         yield unit
                 else:
                     yield sentence
-            else:
+            elif keep_delimiters:
                 yield sentence
+            else:
+                continue
 
 
     def apply(self, string: str, **kwargs) -> str:
