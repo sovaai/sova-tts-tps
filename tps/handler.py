@@ -1,26 +1,43 @@
 import re
-from typing import Union, Callable, Iterator
+from collections import defaultdict
+from typing import Union, Callable, Iterator, Tuple
+
+from loguru import logger
 
 import tps.symbols as smb
-from tps.utils.cleaners import invalid_charset_cleaner, collapse_whitespace
-from tps.utils import load_dict
+import tps.utils.cleaners as tps_cleaners
 import tps.modules as md
-import tps.types as types
+import tps.types as _types
+from tps.utils import load_dict
+from tps.data import content
+from tps.modules.ssml.elements import Pause
 
 
 _curly = re.compile("({}.+?{})".format(*smb.shields))
-_invalid_symbols_dict = {
-    types.Charset.en: smb.symbols_en + smb.shields + [smb.separator],
-    types.Charset.en_cmu: smb.symbols_en_cmu + smb.shields + [smb.separator],
-    types.Charset.ru: smb.symbols_ru + smb.shields + [smb.separator],
-    types.Charset.ru_trans: smb.symbols_ + smb.GRAPHEMES_RU + smb.PHONEMES_RU_TRANS + smb.shields + [smb.separator],
+
+_language_map = {
+    _types.Charset.en: "english",
+    _types.Charset.en_cmu: "english",
+    _types.Charset.ru: "russian",
+    _types.Charset.ru_trans: "russian"
 }
 
 
 class Handler(md.Processor):
-    def __init__(self, charset: str, modules: list, out_max_length: int=None):
+    def __init__(self, charset: str, modules: list, out_max_length: int=None, save_state=False):
+        """
+        This class stores a chain of passed modules and processes texts using this chain.
+
+        :param charset: tps.types.Charset
+            An element of the Charset class that has a corresponding symbol set (see tps.symbols).
+        :param modules: list
+            A list of modules, that processes text in some way.
+        :param out_max_length: Optional[int]
+            If not None, text will be split into units less than out_max_length each.
+        """
         super().__init__(charset)
-        self.symbols = smb.symbols_dict[charset]
+        self.symbols = smb.symbols_map[self.charset]
+        self.language = _language_map[self.charset]
 
         # Mappings from symbol to numeric ID and vice versa:
         self.symbol_to_id = {s: i for i, s in enumerate(self.symbols)}
@@ -32,34 +49,140 @@ class Handler(md.Processor):
 
         self.out_max_length = out_max_length
 
-        self._out_data = {}
-        self._invalid_charset = re.compile(
-            "[^{}]".format(
-                "".join(sorted(_invalid_symbols_dict[self.charset]))
-            )
-        )
+        self._out_data = defaultdict(list)
+        self.save_state = save_state
 
 
-    def __call__(self, text: str, cleaner: Callable[[str], str]=None, user_dict: dict=None, keep_delimiters: bool=True,
-                 **kwargs) -> list:
-        units = list(self.generate(text, cleaner, user_dict, keep_delimiters, **kwargs))
-        return units
+    def process(self, string: str, cleaners: Tuple[Union[str, Callable[[str], str]]]=None, user_dict: dict=None,
+                **kwargs) -> str:
+        """
+        Apply the user_dict, the chain of modules and some cleaners to the passed sentence.
+
+        :param string: str
+            Sentence that needs to be processed.
+        :param cleaners, user_dict, kwargs:
+            See Handler.generate_text
+
+        :return: str
+            Returns processed string.
+        """
+        module: md.Processor
+        origin_string = string
+
+        cleaners = [] if cleaners is None else cleaners
+        for _cleaner in cleaners:
+            if isinstance(_cleaner, Callable):
+                cleaner = _cleaner
+            else:
+                if hasattr(tps_cleaners, _cleaner):
+                    cleaner = getattr(tps_cleaners, _cleaner)
+                else:
+                    logger.warning("There is no such cleaner {} in tps library.".format(_cleaner))
+                    continue
+
+            string = cleaner(string)
+
+        if user_dict is not None:
+            string = self.dict_check(string, user_dict)
+            if self.save_state:
+                self._out_data[origin_string].append(string)
+
+        for module in self.modules:
+            string = module(string, **kwargs)
+            if self.save_state:
+                self._out_data[origin_string].append(string)
+
+        return string
 
 
-    def generate(self, text: str, cleaner: Callable[[str], str]=None, user_dict: dict=None, keep_delimiters: bool=True,
-                 **kwargs) -> Iterator[Union[str, types.Delimiter]]:
+    def process_text(self, text: Union[str, list], cleaners: Tuple[Union[str, Callable[[str], str]]]=None,
+                     user_dict: dict=None, keep_delimiters: bool=True, **kwargs) -> Union[str, list]:
+        """
+        Process any text: first of all splits it to sentences, if it's possible.
+        The Handler.process method is applied to each sentence after that.
+
+        Wraps the Handler.generate_text method, converting iterator to a list of values.
+
+        :param text, cleaners, user_dict, keep_delimiters, kwargs:
+            See Handler.generate_text
+
+        :return: Union[str, list]
+            Returns text as a list of processed sentences (with Pause tokens, if keep_delimiters == True)
+            or just a processed string.
+
+            Cases:
+                * list - if list was passed;
+                * list - if string was passed and keep_delimiters == True;
+                * str - if string was passed and keep_delimiters == False;
+
+        Example:
+        --------
+        >>> text = "Peter Piper picked a peck of pickled peppers. How many pickled peppers did Peter Piper pick?"
+        >>> handler = Handler("en", [])
+        >>> handler.process_text(text, keep_delimiters=False)
+        'peter piper picked a peck of pickled peppers. how many pickled peppers did peter piper pick?'
+        >>> handler(text, keep_delimiters=True)
+        [
+            'peter piper picked a peck of pickled peppers.',
+            <Pause.eos: 500ms>,
+            'how many pickled peppers did peter piper pick?'
+        ]
+
+        """
+        return_string = isinstance(text, str) and not keep_delimiters
+        processed = list(self.generate_text(text, cleaners, user_dict, keep_delimiters, **kwargs))
+
+        return " ".join(processed) if return_string else processed
+
+
+    def generate_text(self, text: Union[str, list], cleaners: Tuple[Union[str, Callable[[str], str]]]=None,
+                      user_dict: dict=None, keep_delimiters: bool=True,
+                      **kwargs) -> Iterator[Union[str, Pause]]:
+        """
+        Produces a generator of processed sentences or units (with Pause tokens, if keep_delimiters == True).
+
+        :param text: Union[str, list]
+            Text that needs to be processed.
+
+            Cases:
+                * str - just an ordinary string;
+                * list - it's assumed, that user submits text that has already been split into sentences
+                (with or without delimiters), for example:
+                    [
+                        text_part_0,
+                        <Pause.eos: 500ms>,
+                        text_part_1
+                    ]
+        :param cleaners: Optional[Tuple[Union[str, Callable[[str], str]]]]
+            Tuple of cleaner functions (e.g. such that provided in tps.utils.cleaners).
+        :param user_dict: dict
+            See Handler.dict_check
+        :param keep_delimiters: bool
+            If True, final list will contain sentences and Pause tokens between them.
+        :param kwargs:
+            * mask_stress: Union[bool, float]
+                Whether to mask each token in sentence.
+                If float, then masking probability will be computed for each token independently.
+            * mask_phonemes: Union[bool, float]
+                Whether to mask each token in sentence.
+                If float, then masking probability will be computed for each token independently.
+
+        :return: Iterator[Union[str, tps.modules.ssml.Pause]]
+        """
         self._clear_state()
-        kwargs["user_dict"] = user_dict
 
-        text = cleaner(text) if cleaner is not None else text
-        text = text.lower()
+        if isinstance(text, str):
+            sentences = self.split_to_sentences(text, keep_delimiters, self.language)
+        elif isinstance(text, list):
+            sentences = text
+        else:
+            raise TypeError
 
-        sentences = self.split_to_sentences(text, keep_delimiters)
-        self._out_data = {sentence: [] for sentence in sentences}
+        self._out_data = {sentence: [] for sentence in sentences if not isinstance(sentence, Pause)}
 
         for sentence in sentences:
-            if not isinstance(sentence, types.Delimiter):
-                sentence = self.apply_to_sentence(sentence, **kwargs)
+            if not isinstance(sentence, Pause):
+                sentence = self.process(sentence, cleaners, user_dict, **kwargs)
 
                 if self.out_max_length is not None:
                     _units = self.split_to_units(sentence, self.out_max_length, keep_delimiters)
@@ -74,33 +197,37 @@ class Handler(md.Processor):
                 continue
 
 
-    def apply(self, string: str, **kwargs) -> str:
-        module: md.Processor
-        user_dict = kwargs.pop("user_dict", None)
-
-        origin_string = string
-
-        if user_dict is not None:
-            string = self.dict_check(string, user_dict)
-            self._out_data[origin_string].append(string)
-
-        for module in self.modules:
-            string = module.apply_to_sentence(string, **kwargs)
-            self._out_data[origin_string].append(string)
-
-        string = invalid_charset_cleaner(string, self._invalid_charset)
-        string = collapse_whitespace(string)  # need to clean multiple white spaces that have appeared
-
-        return string
-
-
     def dict_check(self, string: str, user_dict: dict) -> str:
+        """
+        Checks the passed string using user_dict.
+
+        :param string: str
+            String that needs to be processed.
+        :param user_dict: dict
+            A dictionary containing specific cases that may occur in the text that
+            needs to be resolved before main processing uses chain of modules.
+            Example:
+                {
+                    "hello": "hell+o",
+                    "compact": {
+                        "a compact bag": "a c+ompact bag",
+                        "to compact something": "to comp+act something"
+                    },
+                    "e.g": "for example"
+                }
+
+        :return: str
+        """
         words = self.split_to_words(string)
 
         regexp_case = []
         for i, word in enumerate(words):
-            if word in user_dict:
-                item = user_dict[word]
+            key = word.lower()
+            if key in user_dict:
+                item = user_dict[key]
+
+                if word.istitle():
+                    item = item.capitalize()
 
                 if isinstance(item, dict):
                     regexp_case.append(word)
@@ -112,13 +239,36 @@ class Handler(md.Processor):
 
         for word in regexp_case:
             for case, value in user_dict[word].items():
-                regexp = re.compile(case)
+                regexp = re.compile(case, re.IGNORECASE)
                 string = regexp.sub(lambda elem: value, string)
 
         return string
 
 
     def text2vec(self, string: str) -> list:
+        """
+        Convert the passed string to the array of numbers.
+        Each number is the corresponding index in the self.symbol_to_id dictionary
+        for the characters in the string.
+
+        :param string: str
+            String that needs to be converted to the list of numbers.
+
+        :return: list
+            List of numbers.
+
+        Example:
+        --------
+        >>> text = "Peter Piper picked a peck of pickled peppers."
+        >>> handler = Handler("en", [])
+        >>> processed = handler.process_text(text, keep_delimiters=False)
+        >>> processed
+        'peter piper picked a peck of pickled peppers.'
+        >>> vector = handler.text2vec(processed)
+        >>> vector
+        [32, 16, 36, 16, 34, 12, 32, 17, 32, 16, 34, 12, 32, 17, 22, 28, 16, 23, 12, 15, 12, 32, 16, 22, 28,
+        12, 18, 24, 12, 32, 17, 22, 28, 29, 16, 23, 12, 32, 16, 32, 32, 16, 34, 35, 2]
+        """
         string = _curly.split(string)
         vector = []
         for elem in string:
@@ -133,12 +283,38 @@ class Handler(md.Processor):
 
 
     def vec2text(self, vector: list) -> str:
+        """
+        Convert the passed array of numbers to the string.
+        Each symbol of the string is the corresponding character in the self.id_to_symbol dictionary
+        for the indices in the list.
+
+        :param vector: list
+            List of numbers, that needs to be converted to string.
+
+        :return: str
+
+        Example:
+        --------
+        >>> text = "Peter Piper picked a peck of pickled peppers."
+        >>> handler = Handler("en", [])
+        >>> processed = handler.process_text(text, keep_delimiters=False)
+        >>> processed
+        'peter piper picked a peck of pickled peppers.'
+        >>> vector = handler.text2vec(processed)
+        >>> vector
+        [32, 16, 36, 16, 34, 12, 32, 17, 32, 16, 34, 12, 32, 17, 22, 28, 16, 23, 12, 15, 12, 32, 16, 22, 28,
+        12, 18, 24, 12, 32, 17, 22, 28, 29, 16, 23, 12, 32, 16, 32, 32, 16, 34, 35, 2]
+        >>> string = handler.vec2text(vector)
+        >>> string
+        'peter piper picked a peck of pickled peppers.'
+        """
         text = []
         word = []
         prev = None
+        _phonemes = smb.phoneme_map[self.charset]
         for elem_idx in vector:
             elem = self.id_to_symbol[elem_idx]
-            if elem in smb.PHONEMES or (elem in [smb.hyphen, smb.accent] and prev in smb.PHONEMES):
+            if elem in _phonemes or (elem in [smb.hyphen, smb.accent] and prev in _phonemes):
                 word.append(elem)
             else:
                 if word:
@@ -154,27 +330,73 @@ class Handler(md.Processor):
 
 
     def check_eos(self, text: str):
+        """
+        Checks if there is an EOS token at the end of the text. If not, sets it.
+
+        :param text: str
+
+        :return: str
+        """
         text = text if text.endswith(smb.eos) else text + smb.eos
         return text
 
 
     @classmethod
-    def from_config(cls, config: Union[str, tuple, dict]):
+    def from_config(cls, config: Union[str, dict]):
+        """
+        Makes instance of the Handler class using passed configuration.
+        See the folder data/ and the config.yaml file in the repository.
+
+        :param config: Union[str, dict]
+            Path to the yaml config or dictionary object with all required fields.
+
+        :return: Handler
+        """
         config = load_dict(config, "yaml")
 
         handler_config = config["handler"]
 
         out_max_length = handler_config["out_max_length"]
         modules_list = handler_config["modules"]
-        charset = types.Charset(handler_config["charset"])
+        charset = _types.Charset(handler_config["charset"])
 
         modules = []
         for module in modules_list:
-            module = types.Module(module)
+            module = _types.Module(module)
             module_config = config[module.value]
             module_config["charset"] = charset
 
             modules.append(_get_module(module, module_config))
+
+        return Handler(charset, modules, out_max_length)
+
+
+    @classmethod
+    def from_charset(cls, charset, out_max_length=None, data_dir=None, verify_checksum=True,
+                     silent=False):
+        """
+        Makes instance of the Handler class that is used by default for the passed charset.
+        It's possible that some additional files need to be downloaded before -
+        use tps.download to do that.
+
+        :param charset: tps.types.Charset
+            See Handler.__init__
+        :param out_max_length: int
+            See Handler.__init__
+        :param inference: bool
+            Whether the Handler should work at train or inference mode - the module list is set depending on this.
+        :param data_dir: str
+            See tps.download and tps.data.find
+        :param verify_checksum: bool
+            Whether verify or not the checksums of dictionaries and models
+        :param silent: bool
+            The dictionaries and models will be downloaded if ones don't exist or the checksums are invalid
+            if silent == True, raises exceptions otherwise.
+
+        :return: Handler
+        """
+        charset = _types.Charset(charset)
+        modules = _get_default_modules(charset, data_dir, verify_checksum, silent)
 
         return Handler(charset, modules, out_max_length)
 
@@ -185,22 +407,37 @@ class Handler(md.Processor):
 
     def _validate_modules(self):
         emphasizer_exists = False
+        lower_exists = False
+        cleaner_exists = False
         phonetizer_type = None
+        auxiliary_idx = 0
 
         for i, module in enumerate(self.modules):
-            if isinstance(module, md.Emphasizer):
+            if isinstance(module, md.Lower):
+                lower_exists = True
+            elif isinstance(module, md.Cleaner):
+                cleaner_exists = True
+            elif isinstance(module, md.Emphasizer):
                 emphasizer_exists = True
             elif isinstance(module, md.Phonetizer):
                 phonetizer_type = type(module)
 
                 assert i + 1 == len(self.modules), "Phonetizer module must be the last one"
                 if not emphasizer_exists:
-                    print("There is no emphasizer in modules. "
-                          "Phonetizer will process words only with stress tokens set by user")
+                    logger.warning("There is no emphasizer in modules. "
+                                   "Phonetizer will process words only with stress tokens set by user")
 
-        if self.charset == types.Charset.ru_trans:
+        if not lower_exists:
+            self.modules.insert(auxiliary_idx, md.Lower(self.charset))
+            auxiliary_idx += 1
+        if not cleaner_exists:
+            self.modules.insert(auxiliary_idx, md.Cleaner(self.charset))
+
+        if self.charset == _types.Charset.ru_trans:
             assert phonetizer_type == md.RUglyPhonetizer, \
                 "Wrong phonetizer type {} for current charset {}".format(phonetizer_type, self.charset)
+        elif self.charset == _types.Charset.ru:
+            assert phonetizer_type is None
         # elif self.charset == types.Charset.en_cmu:
         #     assert phonetizer_type == md.EnPhonetizer
 
@@ -211,27 +448,37 @@ class Handler(md.Processor):
 
 
 def get_symbols_length(charset: str):
-    charset = types.Charset[charset]
-    return len(smb.symbols_dict[charset])
+    charset = _types.Charset[charset]
+    return len(smb.symbols_map[charset])
 
 
 _modules_dict = {
-    types.Module.emphasizer: {
-        types.BasedOn.rule: {
-            types.Charset.ru: {
-                "module": md.Emphasizer,
-                "args": ("charset", ),
+    _types.Module.emphasizer: {
+        _types.BasedOn.rule: {
+            _types.Charset.ru: {
+                "module": md.RuEmphasizer,
+                "args": ("charset",),
                 "optional": ("dict_source", "prefer_user")
             },
-            types.Charset.ru_trans: types.Charset.ru
+            _types.Charset.ru_trans: _types.Charset.ru
         }
     },
-    types.Module.phonetizer: {
-        types.BasedOn.rule: {
-            types.Charset.ru_trans: {
+    _types.Module.phonetizer: {
+        _types.BasedOn.rule: {
+            _types.Charset.ru_trans: {
                 "module": md.RUglyPhonetizer,
-                "optional": ("dict_source", )
+                "optional": ("dict_source",)
             }
+        }
+    },
+    _types.Module.yoficator: {
+        _types.BasedOn.rule: {
+            _types.Charset.ru: {
+                "module": md.Yoficator,
+                "args": ("charset",),
+                "optional": ("dict_source",)
+            },
+            _types.Charset.ru_trans: _types.Charset.ru
         }
     }
 }
@@ -240,7 +487,7 @@ _modules_dict = {
 def _get_module(module_type, module_config):
     module_tree = _modules_dict[module_type]
 
-    based_on = types.BasedOn(module_config["type"])
+    based_on = _types.BasedOn(module_config["type"])
 
     if based_on not in module_tree:
         raise NotImplementedError
@@ -253,7 +500,7 @@ def _get_module(module_type, module_config):
         else:
             config = language_tree[charset]
 
-            if isinstance(config, types.Charset):
+            if isinstance(config, _types.Charset):
                 config = language_tree[config]
 
     module = config["module"]
@@ -267,3 +514,37 @@ def _get_module(module_type, module_config):
     arguments.update(optional)
 
     return module(**arguments)
+
+
+def _get_file(name, data_dir, verify_checksum, raise_exception):
+    checksum = None if not verify_checksum else content.get_checksum(name)
+    file = content.find(name, data_dir, raise_exception, checksum)
+
+    if file is None:
+        file = content.download(name, data_dir, force=True)
+
+    return file
+
+
+def _get_default_modules(charset, data_dir=None, verify_checksum=True, silent=False):
+    modules = []
+
+    if charset in [_types.Charset.ru, _types.Charset.ru_trans]:
+        stress_dict = _get_file("stress.dict", data_dir, verify_checksum, not silent)
+        yo_dict = _get_file("yo.dict", data_dir, verify_checksum, not silent)
+
+        modules.extend([
+            md.Lower(charset),
+            md.Cleaner(charset),
+            md.Yoficator(charset, [yo_dict, "plane"]),
+            md.RuEmphasizer(charset, [stress_dict, "plane"], True)
+        ])
+
+        if charset == _types.Charset.ru_trans:
+            modules.append(md.RUglyPhonetizer())
+    elif charset in [_types.Charset.en, _types.Charset.en_cmu]:
+        raise NotImplementedError
+    else:
+        raise ValueError
+
+    return modules

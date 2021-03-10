@@ -2,7 +2,7 @@ from typing import Union
 
 from tps.modules.processor import Processor
 from tps.utils import load_dict, prob2bool
-from tps.symbols import punctuation, space, accent
+from tps.symbols import punctuation, accent
 from tps.types import Charset
 
 """
@@ -39,7 +39,7 @@ class Emphasizer(Processor):
         self.prefer_user = prefer_user
 
 
-    def apply(self, string: str, **kwargs) -> str:
+    def process(self, string: str, **kwargs) -> str:
         """
         Splits passed string to tokens and convert each to stressed one if it presents in dictionary.
         Keep it mind, that tokenization is simple here and it's better to pass normalized string.
@@ -50,22 +50,23 @@ class Emphasizer(Processor):
             * mask_stress: Union[bool, float]
                 Whether to mask each token.
                 If float, then masking probability will be computed for each token independently.
+
         :return: str
         """
         mask = kwargs.get("mask_stress", False)
 
-        tokens = self.split_to_tokens(string, self._punct_re)
+        tokens = self.split_to_tokens(string)
 
         for idx, token in enumerate(tokens):
-            if token in punctuation + space:
+            if token in punctuation:
                 continue
-            token = self._apply_to_token(token, mask)
+            token = self._process_token(token, mask)
             tokens[idx] = token
 
         return self.join_tokens(tokens)
 
 
-    def _apply_to_token(self, token, mask):
+    def _process_token(self, token, mask):
         if prob2bool(mask):
             return token.replace(accent, "")
 

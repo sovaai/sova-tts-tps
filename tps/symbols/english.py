@@ -1,5 +1,8 @@
-vowels = list("aeiouy")
-consonants = list("bcdfghjklmnpqrstvwxz")
+_vovewls = "aeiouy"
+_consonants = "bcdfghjklmnpqrstvwxz"
+
+vowels = list(_vovewls)
+consonants = list(_consonants)
 
 GRAPHEMES_EN = vowels + consonants
 

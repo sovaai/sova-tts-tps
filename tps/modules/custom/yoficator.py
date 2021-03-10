@@ -1,23 +1,19 @@
 from typing import Union
 
-from tps.modules.processor import Processor
-from tps.utils import load_dict, prob2bool
-from tps.symbols import punctuation, accent, shields
+from tps.utils import load_dict
+from tps.symbols import punctuation
 from tps.types import Charset
+from tps.modules import Processor
 
-"""
-If you need to extend the Phonetizer functionality with
-language-specific rules, just add a new descendant class.
-"""
 
-class Phonetizer(Processor):
+class Yoficator(Processor):
     def __init__(self, charset: Union[Charset, str], dict_source: Union[str, tuple, list, dict]=None):
         """
-        Base phonetizer with common functionality for all languages.
+        Simple yoficator for russian language.
 
         :param dict_source: Union[str, tuple, list, dict]
-            Source of dictionary that contains phonetization pairs
-            such as {'hello': 'HH_AH_L_OW') in the case of CMU dict.
+            Source of dictionary that contains yo pairs
+            such as {'елка': 'ёлка').
             Options:
                 * str - path to file.
                     The file extension must explicitly show its format in case of json and yaml files.
@@ -38,40 +34,25 @@ class Phonetizer(Processor):
 
     def process(self, string: str, **kwargs) -> str:
         """
-        Splits passed string to tokens and convert each to phonetized one if it presents in dictionary.
+        Splits passed string to tokens and convert each to yoficated one if it presents in dictionary.
         Keep it mind, that tokenization is simple here and it's better to pass normalized string.
 
         :param string: str
             Your text.
         :param kwargs:
-            * mask_phonemes: Union[bool, float]
-                Whether to mask each token.
-                If float, then masking probability will be computed for each token independently.
 
         :return: str
         """
-        mask = kwargs.get("mask_phonemes", False)
-
         tokens = self.split_to_tokens(string)
 
         for idx, token in enumerate(tokens):
             if token in punctuation:
                 continue
-            token = self._process_token(token, mask)
+            token = self._process_token(token)
             tokens[idx] = token
 
         return self.join_tokens(tokens)
 
 
-    def _process_token(self, token, mask):
-        if prob2bool(mask):
-            return token
-
-        stress_exists = token.find(accent) != -1
-        if not stress_exists: # we won't phonetize words without stress, that's all
-            return token
-
-        phoneme_token = self.entries.get(token, None) # word -> W_O_R_D (if exists)
-        token = shields[0] + phoneme_token + shields[1] if phoneme_token is not None else token # W_O_R_D -> {W_O_R_D}
-
-        return token
+    def _process_token(self, token):
+        return self.entries.get(token, token)

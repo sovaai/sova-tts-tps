@@ -121,6 +121,8 @@ def invalid_charset_cleaner(text, charset_re):
 def light_punctuation_cleaners(text):
     text = text.strip()
     text = text.replace(" - ", " — ")
+    for s in ['"', '“', '”', '„', '«', '»', '\'']:
+        text = text.replace(s, "")
     text = collapse_whitespace(text)
     return text
 

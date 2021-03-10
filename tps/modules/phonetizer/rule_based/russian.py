@@ -3,7 +3,7 @@ from typing import Union
 
 from tps.modules.phonetizer.rule_based.independent import Phonetizer
 from tps.utils import prob2bool
-from tps.symbols import punctuation, space, accent, separator, shields, russian, symbols_dict
+from tps.symbols import accent, separator, shields, russian, symbols_map
 from tps.types import Charset
 
 
@@ -11,10 +11,10 @@ class RUglyPhonetizer(Phonetizer):
     def __init__(self, dict_source: Union[str, tuple, list, dict]=None):
         super().__init__(Charset.ru_trans, dict_source)
 
-        self._symbols = symbols_dict[self.charset]
+        self._symbols = symbols_map[self.charset]
 
 
-    def _apply_to_token(self, token, mask):
+    def _process_token(self, token, mask):
         ugly_token = convert(token)
 
         if len(ugly_token) == 1 and ugly_token not in self._symbols:

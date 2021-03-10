@@ -17,6 +17,7 @@ class Charset(str, Enum):
 class Module(str, Enum):
     emphasizer = "emphasizer"
     phonetizer = "phonetizer"
+    yoficator = "yoficator"
 
 
 class Delimiter(str, Enum):
@@ -25,3 +26,17 @@ class Delimiter(str, Enum):
     semicolon = "semicolon"
     comma = "comma"
     space = "space"
+
+
+class SSMLTag(str, Enum):
+    speak = "speak"
+    break_ = "break"
+    p = "p"
+    s = "s"
+    sub = "sub"
+    prosody = "prosody"
+
+
+    @classmethod
+    def nested(cls, value):
+        return value in [cls.speak, cls.p, cls.s, cls.prosody]

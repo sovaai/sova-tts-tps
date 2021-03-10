@@ -4,37 +4,20 @@ import json
 import yaml
 import numpy as np
 
-from tps.types import Charset
 from tps import symbols as smb
-
-
-GRAPHEME_DICT = {
-    Charset.en: smb.english.GRAPHEMES_EN,
-    Charset.en_cmu: smb.english.GRAPHEMES_EN,
-    Charset.ru: smb.russian.GRAPHEMES_RU,
-    Charset.ru_trans: smb.russian.GRAPHEMES_RU
-}
-
-NOT_PUNCT_DICT = {
-    Charset.en: smb.english.GRAPHEMES_EN + smb.shields + [smb.accent, smb.separator, "\%s" %smb.hyphen],
-    Charset.en_cmu: smb.english.EN_CMU_SET + smb.shields + [smb.accent, smb.separator, "\%s" %smb.hyphen],
-    Charset.ru: smb.russian.GRAPHEMES_RU + smb.shields + [smb.accent, smb.separator, "\%s" %smb.hyphen],
-    Charset.ru_trans: smb.russian.GRAPHEMES_RU + smb.russian.PHONEMES_RU_TRANS + smb.shields +
-                      [smb.accent, smb.separator, "\%s" %smb.hyphen]
-}
 
 
 def prob2bool(prob):
     return prob if isinstance(prob, bool) else np.random.choice([True, False], p=[prob, 1 - prob])
 
 
-_punct_re = re.compile("[{}]".format("".join(smb.punctuation + smb.space)))
+_punct_re = re.compile("[{}]".format("".join(smb.punctuation)))
 def split_to_tokens(text, punct_re=None):
     punct_re = _punct_re if punct_re is None else punct_re
 
-    prepared = punct_re.sub(lambda elem: "*{}*".format(elem.group(0)), text)
+    prepared = punct_re.sub(lambda elem: "⁑{}⁑".format(elem.group(0)), text)
 
-    prepared = prepared.split("*")
+    prepared = prepared.split("⁑")
     prepared = [t for t in prepared if t != ""]
 
     return prepared
@@ -46,20 +29,6 @@ def hide_stress(regexp, text):
 
 def reveal_stress(regexp, text):
     return regexp.sub(lambda elem: "+" + elem.group(0).lower(), text)
-
-
-def get_stressed_letters_re(charset):
-    charset = Charset[charset]
-    regexp = re.compile(r"\+[{}]".format("".join(GRAPHEME_DICT[charset])))
-
-    return regexp
-
-
-def get_capital_letters_re(charset):
-    charset = Charset[charset]
-    regexp = re.compile("[{}]".format("".join(GRAPHEME_DICT[charset]).upper()))
-
-    return regexp
 
 
 def load_dict(dict_source, fmt=None):

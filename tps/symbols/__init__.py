@@ -1,8 +1,9 @@
-from tps.symbols.english import EN_CMU_SET, EN_SET, GRAPHEMES_EN, PHONEMES_EN_CMU
-from tps.symbols.russian import RU_SET, RU_TRANS_SET, GRAPHEMES_RU, PHONEMES_RU_TRANS
+from string import punctuation
+
+from tps.symbols import english as en
+from tps.symbols import russian as ru
 from tps.types import Charset
 
-PHONEMES = set(PHONEMES_EN_CMU + PHONEMES_RU_TRANS)
 
 dot = '.'
 intonation = '!?'
@@ -19,18 +20,37 @@ shields = ["{", "}"]
 pad = "<pad>"
 eos = "~"
 
-punctuation = dot + intonation + other + comma + dash
+tps_punctuation = dot + intonation + other + comma + dash
 
-symbols_ = [pad] + [eos] + list(punctuation + hyphen + space + accent)
+symbols_ = [pad] + [eos] + list(tps_punctuation + hyphen + space + accent)
 
-symbols_en = symbols_ + EN_SET
-symbols_en_cmu = symbols_ + EN_CMU_SET
-symbols_ru = symbols_ + RU_SET
-symbols_ru_trans = symbols_ + RU_TRANS_SET
+symbols_en = symbols_ + en.EN_SET
+symbols_en_cmu = symbols_ + en.EN_CMU_SET
+symbols_ru = symbols_ + ru.RU_SET
+symbols_ru_trans = symbols_ + ru.RU_TRANS_SET
 
-symbols_dict = {
-	Charset.en: symbols_en,
+symbols_map = {
+    Charset.en: symbols_en,
     Charset.en_cmu: symbols_en_cmu,
-	Charset.ru: symbols_ru,
+    Charset.ru: symbols_ru,
     Charset.ru_trans: symbols_ru_trans
+}
+
+phoneme_map = {
+    Charset.en: [],
+    Charset.en_cmu: en.PHONEMES_EN_CMU,
+    Charset.ru: [],
+    Charset.ru_trans: ru.PHONEMES_RU_TRANS
+}
+
+for symb in [accent, hyphen, separator] + shields:
+    punctuation = punctuation.replace(symb, "")
+punctuation = list(punctuation) + [dash, space, '“', '”', '„', '«', '»']
+
+_shielding = shields + [separator]
+valid_symbols_map = {
+    Charset.en: symbols_en + _shielding,
+    Charset.en_cmu: symbols_en_cmu + _shielding,
+    Charset.ru: symbols_ru + _shielding,
+    Charset.ru_trans: symbols_ + ru.GRAPHEMES_RU + ru.PHONEMES_RU_TRANS + _shielding
 }

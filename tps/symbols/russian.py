@@ -1,4 +1,5 @@
-GRAPHEMES_RU = list("абвгдеёжзийклмнопрстуфхцчшщъыьэюя")
+_graphemes = "абвгдеёжзийклмнопрстуфхцчшщъыьэюя"
+GRAPHEMES_RU = list(_graphemes)
 
 softletters = set("яёюиье")
 startsyl = set("ъьаяоёуюэеиы-")
