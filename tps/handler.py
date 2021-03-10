@@ -1,6 +1,7 @@
 import re
 from collections import defaultdict
-from typing import Union, Callable, Iterator, Tuple
+from typing import Union, Callable, Iterator, Tuple, List
+from functools import singledispatch
 
 from loguru import logger
 
@@ -53,8 +54,8 @@ class Handler(md.Processor):
         self.save_state = save_state
 
 
-    def process(self, string: str, cleaners: Tuple[Union[str, Callable[[str], str]]]=None, user_dict: dict=None,
-                **kwargs) -> str:
+    @singledispatch
+    def process(self, string: str, cleaners: str=None, user_dict: dict=None, **kwargs) -> str:
         """
         Apply the user_dict, the chain of modules and some cleaners to the passed sentence.
 
@@ -70,6 +71,7 @@ class Handler(md.Processor):
         origin_string = string
 
         cleaners = [] if cleaners is None else cleaners
+        cleaners = [cleaners] if not isinstance(cleaners, (tuple, list)) else cleaners
         for _cleaner in cleaners:
             if isinstance(_cleaner, Callable):
                 cleaner = _cleaner
@@ -93,6 +95,20 @@ class Handler(md.Processor):
                 self._out_data[origin_string].append(string)
 
         return string
+
+
+    @process.register
+    def _(self, string: str, cleaners: Callable[[str], str]=None, user_dict: dict=None, **kwargs) -> str: ...
+
+
+    @process.register
+    def _(self, string: str, cleaners: Tuple[Union[str, Callable[[str], str]]], user_dict: dict=None,
+          **kwargs) -> str: ...
+
+
+    @process.register
+    def _(self, string: str, cleaners: List[Union[str, Callable[[str], str]]], user_dict: dict=None,
+          **kwargs) -> str: ...
 
 
     def process_text(self, text: Union[str, list], cleaners: Tuple[Union[str, Callable[[str], str]]]=None,
