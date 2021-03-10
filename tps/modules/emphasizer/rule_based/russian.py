@@ -1,9 +1,17 @@
+from typing import Union
+
 from tps.modules.emphasizer.rule_based.independent import Emphasizer
 from tps.utils import prob2bool
 from tps.symbols import accent
+from tps.types import Charset
 
 
 class RuEmphasizer(Emphasizer):
+    def __init__(self, charset: Union[Charset, str], dict_source: Union[str, tuple, list, dict]=None,
+                 prefer_user: bool=True):
+        super().__init__(charset, dict_source, prefer_user)
+
+
     def _process_token(self, token, mask):
         if prob2bool(mask):
             return token.replace(accent, "")

@@ -24,7 +24,7 @@ _language_map = {
 
 
 class Handler(md.Processor):
-    def __init__(self, charset: str, modules: list, out_max_length: int=None, save_state=False):
+    def __init__(self, charset: str, modules: list, out_max_length: int=None, save_state=False, name="handler"):
         """
         This class stores a chain of passed modules and processes texts using this chain.
 
@@ -35,7 +35,7 @@ class Handler(md.Processor):
         :param out_max_length: Optional[int]
             If not None, text will be split into units less than out_max_length each.
         """
-        super().__init__(charset)
+        super().__init__(charset, name=name)
         self.symbols = smb.symbols_map[self.charset]
         self.language = _language_map[self.charset]
 
@@ -470,16 +470,6 @@ _modules_dict = {
                 "optional": ("dict_source",)
             }
         }
-    },
-    _types.Module.yoficator: {
-        _types.BasedOn.rule: {
-            _types.Charset.ru: {
-                "module": md.Yoficator,
-                "args": ("charset",),
-                "optional": ("dict_source",)
-            },
-            _types.Charset.ru_trans: _types.Charset.ru
-        }
     }
 }
 
@@ -536,7 +526,7 @@ def _get_default_modules(charset, data_dir=None, verify_checksum=True, silent=Fa
         modules.extend([
             md.Lower(charset),
             md.Cleaner(charset),
-            md.Yoficator(charset, [yo_dict, "plane"]),
+            md.Replacer(charset, [yo_dict, "plane"], name="Yoficator"),
             md.RuEmphasizer(charset, [stress_dict, "plane"], True)
         ])
 

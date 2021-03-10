@@ -1,19 +1,19 @@
 from typing import Union
 
-from tps.utils import load_dict
+from tps.utils import load_dict, prob2bool
 from tps.symbols import punctuation
 from tps.types import Charset
 from tps.modules import Processor
 
 
-class Yoficator(Processor):
-    def __init__(self, charset: Union[Charset, str], dict_source: Union[str, tuple, list, dict]=None):
+class Replacer(Processor):
+    def __init__(self, charset: Union[Charset, str], dict_source: Union[str, tuple, list, dict]=None,
+                 name: str="replacer"):
         """
-        Simple yoficator for russian language.
+        Base class for replacer-type processors.
 
         :param dict_source: Union[str, tuple, list, dict]
-            Source of dictionary that contains yo pairs
-            such as {'елка': 'ёлка').
+            Source of dictionary that contains replacement pairs.
             Options:
                 * str - path to file.
                     The file extension must explicitly show its format in case of json and yaml files.
@@ -23,7 +23,7 @@ class Yoficator(Processor):
                     format - format of the dictionary file (see tps.utils.load_dict function)
                 * dict - just a dict
         """
-        super().__init__(charset)
+        super().__init__(charset, None, name)
 
         fmt = None
         if isinstance(dict_source, (tuple, list)):
@@ -34,25 +34,29 @@ class Yoficator(Processor):
 
     def process(self, string: str, **kwargs) -> str:
         """
-        Splits passed string to tokens and convert each to yoficated one if it presents in dictionary.
+        Splits the passed string into tokens and replaces each one according to the dictionary (if exists).
         Keep it mind, that tokenization is simple here and it's better to pass normalized string.
 
         :param string: str
             Your text.
         :param kwargs:
+            * mask: Union[bool, float]
+                Whether to mask each token.
+                If float, then masking probability will be computed for each token independently.
 
         :return: str
         """
+        mask = kwargs.get("mask", False)
         tokens = self.split_to_tokens(string)
 
         for idx, token in enumerate(tokens):
             if token in punctuation:
                 continue
-            token = self._process_token(token)
+            token = self._process_token(token, mask)
             tokens[idx] = token
 
         return self.join_tokens(tokens)
 
 
-    def _process_token(self, token):
-        return self.entries.get(token, token)
+    def _process_token(self, token, mask):
+        return token if prob2bool(mask) else self.entries.get(token, token)

@@ -24,7 +24,7 @@ _spaced_punctuation = re.compile(r" [{}]".format("".join([char for char in char_
 
 
 class Processor:
-    def __init__(self, charset: Union[Charset, str], max_unit_length: int=None):
+    def __init__(self, charset: Union[Charset, str], max_unit_length: int=None, name="processor"):
         """
         Base class for all text processors.
 
@@ -36,6 +36,8 @@ class Processor:
         """
         self.charset = Charset[charset]
         self.max_unit_length = max_unit_length
+
+        self.name = name.capitalize()
 
 
     def __call__(self, sentence: str, **kwargs) -> str:
@@ -58,6 +60,10 @@ class Processor:
         parts = [self.process(part, **kwargs) for part in parts]
 
         return " ".join(parts)
+
+
+    def __str__(self):
+        return "<{}: {}>".format(self.name, self.charset.upper())
 
 
     def process(self, string: str, **kwargs) -> str:

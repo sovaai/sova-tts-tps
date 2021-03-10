@@ -1,8 +1,8 @@
 from typing import Union
 
-from tps.modules.processor import Processor
-from tps.utils import load_dict, prob2bool
-from tps.symbols import punctuation, accent, shields
+from tps.modules import Replacer
+from tps.utils import prob2bool
+from tps.symbols import accent, shields
 from tps.types import Charset
 
 """
@@ -10,7 +10,7 @@ If you need to extend the Phonetizer functionality with
 language-specific rules, just add a new descendant class.
 """
 
-class Phonetizer(Processor):
+class Phonetizer(Replacer):
     def __init__(self, charset: Union[Charset, str], dict_source: Union[str, tuple, list, dict]=None):
         """
         Base phonetizer with common functionality for all languages.
@@ -27,13 +27,7 @@ class Phonetizer(Processor):
                     format - format of the dictionary file (see tps.utils.load_dict function)
                 * dict - just a dict
         """
-        super().__init__(charset)
-
-        fmt = None
-        if isinstance(dict_source, (tuple, list)):
-            dict_source, fmt = dict_source
-
-        self.entries = load_dict(dict_source, fmt)
+        super().__init__(charset, dict_source, "Phonetizer")
 
 
     def process(self, string: str, **kwargs) -> str:
@@ -51,16 +45,7 @@ class Phonetizer(Processor):
         :return: str
         """
         mask = kwargs.get("mask_phonemes", False)
-
-        tokens = self.split_to_tokens(string)
-
-        for idx, token in enumerate(tokens):
-            if token in punctuation:
-                continue
-            token = self._process_token(token, mask)
-            tokens[idx] = token
-
-        return self.join_tokens(tokens)
+        return super().process(string, mask=mask)
 
 
     def _process_token(self, token, mask):
