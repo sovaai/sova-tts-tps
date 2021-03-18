@@ -463,6 +463,19 @@ class Handler(md.Processor):
         #     assert phonetizer_type == md.EnPhonetizer
 
 
+    def pop(self, item):
+        if isinstance(item, int):
+            idx = item
+        elif isinstance(item, str):
+            for idx, module in enumerate(self.modules):
+                if module.name == item:
+                    break
+        else:
+            raise TypeError
+
+        return self.modules.pop(idx)
+
+
     def _clear_state(self):
         del self._out_data
         self._out_data = {}
