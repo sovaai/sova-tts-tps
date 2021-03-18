@@ -538,11 +538,13 @@ def _get_default_modules(charset, data_dir=None, verify_checksum=True, silent=Fa
     if charset in [_types.Charset.ru, _types.Charset.ru_trans]:
         stress_dict = _get_file("stress.dict", data_dir, verify_checksum, not silent)
         yo_dict = _get_file("yo.dict", data_dir, verify_checksum, not silent)
+        e_dict = _get_file("e.dict", data_dir, verify_checksum, not silent)
 
         modules.extend([
             md.Lower(charset),
             md.Cleaner(charset),
-            md.Replacer(charset, [yo_dict, "plane"], name="Yoficator"),
+            md.BlindReplacer(charset, [e_dict, "plane"], name="Eficator"),
+            md.BlindReplacer(charset, [yo_dict, "plane"], name="Yoficator"),
             md.RuEmphasizer(charset, [stress_dict, "plane"], True)
         ])
 

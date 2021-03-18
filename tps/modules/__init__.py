@@ -1,6 +1,6 @@
 from tps.modules.processor import Processor
 
-from tps.modules.custom.replacer import Replacer
+from tps.modules.custom.replacer import Replacer, BlindReplacer
 from tps.modules.custom.auxiliary import Lower, Cleaner
 
 from tps.modules.emphasizer.rule_based.independent import Emphasizer

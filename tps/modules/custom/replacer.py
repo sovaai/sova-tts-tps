@@ -1,7 +1,7 @@
 from typing import Union
 
 from tps.utils import load_dict, prob2bool
-from tps.symbols import punctuation
+from tps.symbols import punctuation, accent
 from tps.types import Charset
 from tps.modules import Processor
 
@@ -60,3 +60,8 @@ class Replacer(Processor):
 
     def _process_token(self, token, mask):
         return token if prob2bool(mask) else self.entries.get(token, token)
+
+
+class BlindReplacer(Replacer):
+    def _process_token(self, token, mask):
+        return token if prob2bool(mask) else self.entries.get(token.replace(accent, ""), token)
