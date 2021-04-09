@@ -31,7 +31,7 @@ else:
 _content_info = {
     "stress.dict": ("http://dataset.sova.ai/SOVA-TTS/tps_data/stress.dict", "99aedabdfe82d5bf9c2d428b498221a1"),
     "yo.dict": ("http://dataset.sova.ai/SOVA-TTS/tps_data/yo.dict", "22704929ffd1f8bf3a4e0d9cce0cdb5f"),
-    "e.dict": ("http://dataset.sova.ai/SOVA-TTS/tps_data/e.dict", "f3ed69c8e760f377c632721a52693485")
+    "e.dict": ("http://dataset.sova.ai/SOVA-TTS/tps_data/e.dict", "3b1aa9ac0e79f6322ece7c4834fecab9")
 }
 
 

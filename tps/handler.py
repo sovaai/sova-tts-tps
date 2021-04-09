@@ -9,8 +9,7 @@ import tps.symbols as smb
 import tps.utils.cleaners as tps_cleaners
 import tps.modules as md
 import tps.types as _types
-from tps.utils import load_dict
-from tps.data import content
+from tps.content import ops
 from tps.modules.ssml.elements import Pause
 
 
@@ -458,11 +457,12 @@ def get_symbols_length(charset: str):
 
 
 def _get_file(name, data_dir, verify_checksum, raise_exception):
-    checksum = None if not verify_checksum else content.get_checksum(name)
-    file = content.find(name, data_dir, raise_exception, checksum)
+    checksum = None if not verify_checksum else ops.get_checksum(name)
+    file = ops.find(name, data_dir, raise_exception, checksum)
 
     if file is None:
-        file = content.download(name, data_dir, force=True)
+        logger.info("File {} will be automatically downloaded".format(name))
+        file = ops.download(name, data_dir, force=True)
 
     return file
 
