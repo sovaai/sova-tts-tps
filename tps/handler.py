@@ -363,36 +363,6 @@ class Handler(md.Processor):
 
 
     @classmethod
-    def from_config(cls, config: Union[str, dict]):
-        """
-        Makes instance of the Handler class using passed configuration.
-        See the folder data/ and the config.yaml file in the repository.
-
-        :param config: Union[str, dict]
-            Path to the yaml config or dictionary object with all required fields.
-
-        :return: Handler
-        """
-        config = load_dict(config, "yaml")
-
-        handler_config = config["handler"]
-
-        out_max_length = handler_config["out_max_length"]
-        modules_list = handler_config["modules"]
-        charset = _types.Charset(handler_config["charset"])
-
-        modules = []
-        for module in modules_list:
-            module = _types.Module(module)
-            module_config = config[module.value]
-            module_config["charset"] = charset
-
-            modules.append(_get_module(module, module_config))
-
-        return Handler(charset, modules, out_max_length)
-
-
-    @classmethod
     def from_charset(cls, charset, out_max_length=None, data_dir=None, verify_checksum=True,
                      silent=False):
         """
@@ -484,60 +454,6 @@ class Handler(md.Processor):
 def get_symbols_length(charset: str):
     charset = _types.Charset[charset]
     return len(smb.symbols_map[charset])
-
-
-_modules_dict = {
-    _types.Module.emphasizer: {
-        _types.BasedOn.rule: {
-            _types.Charset.ru: {
-                "module": md.RuEmphasizer,
-                "args": ("charset",),
-                "optional": ("dict_source", "prefer_user")
-            },
-            _types.Charset.ru_trans: _types.Charset.ru
-        }
-    },
-    _types.Module.phonetizer: {
-        _types.BasedOn.rule: {
-            _types.Charset.ru_trans: {
-                "module": md.RUglyPhonetizer,
-                "optional": ("dict_source",)
-            }
-        }
-    }
-}
-
-
-def _get_module(module_type, module_config):
-    module_tree = _modules_dict[module_type]
-
-    based_on = _types.BasedOn(module_config["type"])
-
-    if based_on not in module_tree:
-        raise NotImplementedError
-    else:
-        language_tree = module_tree[based_on.value]
-        charset = module_config["charset"]
-
-        if charset not in language_tree:
-            raise NotImplementedError
-        else:
-            config = language_tree[charset]
-
-            if isinstance(config, _types.Charset):
-                config = language_tree[config]
-
-    module = config["module"]
-    arguments = {arg: module_config[arg] for arg in config.get("args", ())}
-    assert all(arg is not None for arg in arguments.values())
-
-    optional = {arg: module_config[arg] for arg in config.get("optional", {})}
-    optional = {arg: value for arg, value in optional.items() if value is not None}
-    # in case of None value there will be taken default value of a method for the optional arg
-
-    arguments.update(optional)
-
-    return module(**arguments)
 
 
 def _get_file(name, data_dir, verify_checksum, raise_exception):
