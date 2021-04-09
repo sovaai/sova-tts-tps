@@ -11,7 +11,6 @@ class Charset(str, Enum):
     en = "en"
     en_cmu = "en_cmu"
     ru = "ru"
-    ru_trans = "ru_trans"
 
 
 class Module(str, Enum):

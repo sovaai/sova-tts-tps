@@ -15,13 +15,6 @@ from tps.modules.ssml.elements import Pause
 
 _curly = re.compile("({}.+?{})".format(*smb.shields))
 
-_language_map = {
-    _types.Charset.en: "english",
-    _types.Charset.en_cmu: "english",
-    _types.Charset.ru: "russian",
-    _types.Charset.ru_trans: "russian"
-}
-
 
 class Handler(md.Processor):
     def __init__(self, charset: str, modules: list=None, out_max_length: int=None, save_state=False, name="Handler"):
@@ -424,10 +417,7 @@ class Handler(md.Processor):
         if not cleaner_exists:
             self.modules.insert(auxiliary_idx, md.Cleaner(self.charset))
 
-        if self.charset == _types.Charset.ru_trans:
-            assert phonetizer_type == md.RUglyPhonetizer, \
-                "Wrong phonetizer type {} for current charset {}".format(phonetizer_type, self.charset)
-        elif self.charset == _types.Charset.ru:
+        if self.charset == _types.Charset.ru:
             assert phonetizer_type is None
         # elif self.charset == types.Charset.en_cmu:
         #     assert phonetizer_type == md.EnPhonetizer
@@ -473,7 +463,7 @@ def _get_default_modules(charset, data_dir=None, verify_checksum=True, silent=Fa
         md.Cleaner(charset)
     ]
 
-    if charset in [_types.Charset.ru, _types.Charset.ru_trans]:
+    if charset == _types.Charset.ru:
         stress_dict = _get_file("stress.dict", data_dir, verify_checksum, not silent)
         yo_dict = _get_file("yo.dict", data_dir, verify_checksum, not silent)
         e_dict = _get_file("e.dict", data_dir, verify_checksum, not silent)
@@ -483,10 +473,9 @@ def _get_default_modules(charset, data_dir=None, verify_checksum=True, silent=Fa
             md.BlindReplacer([yo_dict, "plane"], name="Yoficator"),
             md.RuEmphasizer([stress_dict, "plane"], True)
         ])
-
-        if charset == _types.Charset.ru_trans:
-            modules.append(md.RUglyPhonetizer())
-    elif charset in [_types.Charset.en, _types.Charset.en_cmu]:
+    elif charset == _types.Charset.en:
+        pass
+    elif charset == _types.Charset.en_cmu:
         raise NotImplementedError
     else:
         raise ValueError
