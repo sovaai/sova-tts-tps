@@ -3,7 +3,6 @@ from typing import Union
 from tps.modules import Replacer
 from tps.utils import prob2bool
 from tps.symbols import accent
-from tps.types import Charset
 
 """
 If you need to extend the Emphasizer functionality with
@@ -11,8 +10,7 @@ language-specific rules, just add a new descendant class.
 """
 
 class Emphasizer(Replacer):
-    def __init__(self, charset: Union[Charset, str], dict_source: Union[str, tuple, list, dict]=None,
-                 prefer_user: bool=True):
+    def __init__(self, dict_source: Union[str, tuple, list, dict]=None, prefer_user: bool=True):
         """
         Base emphasizer with common functionality for all languages.
 
@@ -29,7 +27,7 @@ class Emphasizer(Replacer):
         :param prefer_user: bool
             If true, words with stress tokens set by user will be passed as is
         """
-        super().__init__(charset, dict_source, "Emphasizer")
+        super().__init__(dict_source, "Emphasizer")
         self.prefer_user = prefer_user
 
 

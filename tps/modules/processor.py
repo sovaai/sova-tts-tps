@@ -5,7 +5,6 @@ from typing import Union, Pattern, Iterator
 from nltk import sent_tokenize, word_tokenize
 
 from tps.utils import split_to_tokens
-from tps.types import Charset
 from tps.modules.ssml.elements import Pause
 from tps.symbols import separator, shields
 
@@ -24,20 +23,18 @@ _spaced_punctuation = re.compile(r" [{}]".format("".join([char for char in char_
 
 
 class Processor:
-    def __init__(self, charset: Union[Charset, str], max_unit_length: int=None, name="processor"):
+    def __init__(self, max_unit_length: int=None, name="Processor"):
         """
         Base class for all text processors.
 
-        :param charset: tps.types.Charset
-            An element of the Charset class that has a corresponding symbol set (see tps.symbols).
         :param max_unit_length: Optional[int]
             If not None, passed text will be split into units less than max_unit_length each.
             See Processor.__call__ and Processor.split_to_units
+        :param name: str
         """
-        self.charset = Charset[charset]
         self.max_unit_length = max_unit_length
 
-        self.name = name.capitalize()
+        self.name = name
 
 
     def __call__(self, sentence: str, **kwargs) -> str:
@@ -63,7 +60,7 @@ class Processor:
 
 
     def __str__(self):
-        return "<{}: {}>".format(self.name, self.charset.upper())
+        return "<{}: max unit length {}>".format(self.name, self.max_unit_length)
 
 
     def process(self, string: str, **kwargs) -> str:
@@ -289,7 +286,7 @@ class Processor:
 
         Example:
         --------
-        >>> proc = Processor("en")
+        >>> proc = Processor()
         >>> text = "splitting sentence, e.g. this one."
         >>> proc.split_to_words(text)
         ['splitting', 'sentence', ',', 'e.g', '.', 'this', 'one', '.']

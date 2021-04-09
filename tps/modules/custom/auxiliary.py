@@ -12,7 +12,8 @@ class Lower(md.Processor):
 
 class Cleaner(md.Processor):
     def __init__(self, charset):
-        super().__init__(charset)
+        super().__init__()
+        self.charset = charset
         self._invalid_charset = re.compile(
             "[^{}]".format(
                 "".join(sorted(set(valid_symbols_map[self.charset])))

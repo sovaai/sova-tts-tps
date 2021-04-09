@@ -25,27 +25,28 @@ _language_map = {
 
 
 class Handler(md.Processor):
-    def __init__(self, charset: str, modules: list, out_max_length: int=None, save_state=False, name="handler"):
+    def __init__(self, charset: str, modules: list=None, out_max_length: int=None, save_state=False, name="Handler"):
         """
         This class stores a chain of passed modules and processes texts using this chain.
 
         :param charset: tps.types.Charset
             An element of the Charset class that has a corresponding symbol set (see tps.symbols).
-        :param modules: list
+        :param modules: Optional(list)
             A list of modules, that processes text in some way.
+            If None, then the Handler object will have only basic functionality.
         :param out_max_length: Optional[int]
             If not None, text will be split into units less than out_max_length each.
         """
-        super().__init__(charset, name=name)
-        self.symbols = smb.symbols_map[self.charset]
-        self.language = _language_map[self.charset]
+        super().__init__(name=name)
+        self.charset = charset
+        self.symbols = smb.symbols_map[charset]
+        self.language = smb.language_map[charset]
 
         # Mappings from symbol to numeric ID and vice versa:
         self.symbol_to_id = {s: i for i, s in enumerate(self.symbols)}
         self.id_to_symbol = {i: s for i, s in enumerate(self.symbols)}
 
-        self.modules = modules
-        self._preprocessor_dict = None
+        self.modules = modules if modules is not None else []
         self._validate_modules()
 
         self.out_max_length = out_max_length
@@ -419,7 +420,7 @@ class Handler(md.Processor):
                                    "Phonetizer will process words only with stress tokens set by user")
 
         if not lower_exists:
-            self.modules.insert(auxiliary_idx, md.Lower(self.charset))
+            self.modules.insert(auxiliary_idx, md.Lower())
             auxiliary_idx += 1
         if not cleaner_exists:
             self.modules.insert(auxiliary_idx, md.Cleaner(self.charset))
@@ -467,7 +468,10 @@ def _get_file(name, data_dir, verify_checksum, raise_exception):
 
 
 def _get_default_modules(charset, data_dir=None, verify_checksum=True, silent=False):
-    modules = []
+    modules = [
+        md.Lower(),
+        md.Cleaner(charset)
+    ]
 
     if charset in [_types.Charset.ru, _types.Charset.ru_trans]:
         stress_dict = _get_file("stress.dict", data_dir, verify_checksum, not silent)
@@ -475,11 +479,9 @@ def _get_default_modules(charset, data_dir=None, verify_checksum=True, silent=Fa
         e_dict = _get_file("e.dict", data_dir, verify_checksum, not silent)
 
         modules.extend([
-            md.Lower(charset),
-            md.Cleaner(charset),
-            md.BlindReplacer(charset, [e_dict, "plane"], name="Eficator"),
-            md.BlindReplacer(charset, [yo_dict, "plane"], name="Yoficator"),
-            md.RuEmphasizer(charset, [stress_dict, "plane"], True)
+            md.BlindReplacer([e_dict, "plane"], name="Eficator"),
+            md.BlindReplacer([yo_dict, "plane"], name="Yoficator"),
+            md.RuEmphasizer([stress_dict, "plane"], True)
         ])
 
         if charset == _types.Charset.ru_trans:

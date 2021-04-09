@@ -2,13 +2,12 @@ from typing import Union
 
 from tps.utils import load_dict, prob2bool
 from tps.symbols import punctuation, accent
-from tps.types import Charset
 from tps.modules import Processor
 
 
 class Replacer(Processor):
-    def __init__(self, charset: Union[Charset, str], dict_source: Union[str, tuple, list, dict]=None,
-                 name: str="replacer"):
+    def __init__(self, dict_source: Union[str, tuple, list, dict]=None,
+                 name: str="Replacer"):
         """
         Base class for replacer-type processors.
 
@@ -23,7 +22,7 @@ class Replacer(Processor):
                     format - format of the dictionary file (see tps.utils.load_dict function)
                 * dict - just a dict
         """
-        super().__init__(charset, None, name)
+        super().__init__(None, name)
 
         fmt = None
         if isinstance(dict_source, (tuple, list)):

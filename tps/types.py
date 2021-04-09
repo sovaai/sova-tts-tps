@@ -17,15 +17,7 @@ class Charset(str, Enum):
 class Module(str, Enum):
     emphasizer = "emphasizer"
     phonetizer = "phonetizer"
-    yoficator = "yoficator"
-
-
-class Delimiter(str, Enum):
-    eos = "eos"
-    colon = "colon"
-    semicolon = "semicolon"
-    comma = "comma"
-    space = "space"
+    replacer = "replacer"
 
 
 class SSMLTag(str, Enum):
